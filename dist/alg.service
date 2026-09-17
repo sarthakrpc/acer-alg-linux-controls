@@ -1,0 +1,32 @@
+[Unit]
+Description=alg - fan and keyboard backlight daemon for the Acer ALG (Clevo/Tongfang EC)
+Documentation=file:/usr/share/doc/alg-control/README.md
+# ec_sys comes from modules-load.d and its io file lives in debugfs.
+After=systemd-modules-load.service sys-kernel-debug.mount
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/alg daemon
+ExecReload=/bin/kill -HUP $MAINPID
+# On stop or crash the daemon hands a running fan curve back to the firmware
+# itself; this is a second attempt in case it was killed outright. A manual
+# speed is deliberately left alone - that is a setting, not a supervised loop.
+ExecStopPost=-/usr/bin/alg daemon --cleanup
+Restart=on-failure
+RestartSec=5
+
+# /run/alg holds the control socket, /var/lib/alg the saved settings.
+RuntimeDirectory=alg
+StateDirectory=alg
+
+# If the daemon wedges, systemd kills it and ExecStopPost restores automatic
+# control rather than leaving the fans pinned.
+TimeoutStopSec=10
+KillSignal=SIGTERM
+
+NoNewPrivileges=yes
+ProtectHome=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target

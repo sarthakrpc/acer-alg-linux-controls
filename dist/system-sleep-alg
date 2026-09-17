@@ -1,0 +1,19 @@
+#!/bin/sh
+# systemd sleep hook - installed as /usr/lib/systemd/system-sleep/alg
+#
+# systemd runs this with "pre" before sleeping and "post" after waking. The
+# post pass asks the daemon to put the keyboard backlight and fan settings
+# back, since the EC drops both across suspend.
+#
+# This is the documented mechanism and is definitely invoked on resume,
+# unlike a unit that merely orders itself After=suspend.target.
+#
+# It runs synchronously and delays resume slightly, so keep it quick: the
+# retries inside `alg resume` are bounded to a few seconds.
+
+case "$1" in
+    post)
+        [ -x /usr/bin/alg ] && /usr/bin/alg resume --retries 6 --quiet
+        ;;
+esac
+exit 0

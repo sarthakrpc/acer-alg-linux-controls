@@ -1,0 +1,27 @@
+#!/bin/sh
+set -e
+
+R="${DPKG_ROOT:-}"
+
+# The standard debhelper sequence for an enabled unit.
+if [ -z "$R" ]; then
+    if [ "$1" = remove ] && [ -x /usr/bin/deb-systemd-helper ]; then
+        deb-systemd-helper mask alg.service >/dev/null || true
+    fi
+    if [ "$1" = purge ] && [ -x /usr/bin/deb-systemd-helper ]; then
+        deb-systemd-helper purge alg.service >/dev/null || true
+        deb-systemd-helper unmask alg.service >/dev/null || true
+    fi
+    if [ -d /run/systemd/system ]; then
+        systemctl --system daemon-reload >/dev/null 2>&1 || true
+    fi
+fi
+
+if [ "$1" = purge ]; then
+    # Settings created by the postinst and the daemon rather than shipped in
+    # the package, so dpkg does not know to remove them.
+    rm -f "$R/etc/alg.conf"
+    rm -rf "$R/var/lib/alg"
+fi
+
+exit 0

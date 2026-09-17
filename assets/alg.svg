@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+  <defs>
+    <linearGradient id="b" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5ec8f5"/>
+      <stop offset="1" stop-color="#2b7fd4"/>
+    </linearGradient>
+  </defs>
+  <circle cx="24" cy="24" r="21" fill="none" stroke="url(#b)" stroke-width="3"/>
+  <g fill="url(#b)">
+    <!-- three blades, rotationally symmetric about the hub -->
+    <path d="M24 22c-1.6-4.2-1.2-8.6 1.2-12.2 3.4 1.1 5.6 3.9 5.9 7.4.3 3.2-1.4 5.6-4.4 6.6z"/>
+    <path d="M25.7 25c4.3 1.2 7.4 4.3 8.4 8.5-2.7 2.3-6.3 2.6-9.3.8-2.8-1.7-3.6-4.5-2.4-7.3z"/>
+    <path d="M22.3 25c-2.7 3.6-6.6 5.5-11 5.1-.7-3.5.7-6.8 3.7-8.7 2.7-1.7 5.6-1.2 7.5 1.2z"/>
+  </g>
+  <circle cx="24" cy="24" r="3.2" fill="#1f5fa8"/>
+</svg>

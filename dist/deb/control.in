@@ -1,0 +1,20 @@
+Package: alg-control
+Version: @VERSION@
+Architecture: amd64
+Maintainer: Sarthak <sarthakrpc@gmail.com>
+Installed-Size: @INSTALLED_SIZE@
+Depends: libc6 (>= 2.38), libgl1, libx11-6, libxrandr2, libxi6, libxcursor1, libxinerama1, libxxf86vm1, libwayland-client0
+Section: utils
+Priority: optional
+Description: Fan and keyboard backlight control for the Acer ALG AL15G-53
+ Fan speed, fan curves and RGB keyboard backlight control for the Acer ALG
+ AL15G-53, a Clevo/Tongfang design that acer-wmi does not support.
+ .
+ Installs a small system service that owns the embedded controller, the
+ "alg" command, the ALG Control panel in the applications menu, and a tray
+ icon showing the live temperature that starts when you log in. Whatever you
+ set is put back automatically at boot and after sleep, and nothing needs a
+ password once it is installed.
+ .
+ Replaces the earlier Python version: installing this removes it and keeps
+ your settings.

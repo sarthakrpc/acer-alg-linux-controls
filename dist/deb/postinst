@@ -1,0 +1,99 @@
+#!/bin/sh
+set -e
+
+R="${DPKG_ROOT:-}"
+
+live() {
+    [ -z "$R" ] && [ -d /run/systemd/system ]
+}
+
+# start_trays puts the tray icon up straight away for whoever is logged in to
+# a desktop, so installing does not need a log-out to take effect. From then
+# on the autostart entry does it at each login. Strictly best effort.
+start_trays() {
+    command -v loginctl >/dev/null 2>&1 || return 0
+    command -v runuser >/dev/null 2>&1 || return 0
+    loginctl list-sessions --no-legend 2>/dev/null | while read -r sid rest; do
+        [ "$(loginctl show-session "$sid" -p Remote --value 2>/dev/null)" = no ] || continue
+        case "$(loginctl show-session "$sid" -p Type --value 2>/dev/null)" in
+        x11|wayland) ;;
+        *) continue ;;
+        esac
+        user="$(loginctl show-session "$sid" -p Name --value 2>/dev/null)"
+        [ -n "$user" ] && [ "$user" != root ] || continue
+        uid="$(id -u "$user" 2>/dev/null)" || continue
+        [ -S "/run/user/$uid/bus" ] || continue
+        # As a transient unit of that user's own systemd, so it is theirs in
+        # every respect and is not tied to this script.
+        runuser -u "$user" -- env \
+            XDG_RUNTIME_DIR="/run/user/$uid" \
+            DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$uid/bus" \
+            systemd-run --user --quiet --collect /usr/bin/alg tray >/dev/null 2>&1 || true
+    done
+}
+
+case "$1" in
+configure)
+    # /etc/alg.conf is deliberately not a dpkg conffile: one usually exists
+    # already, and a conffile would turn that into an install-time question.
+    # It is created once and never overwritten; purging the package removes it.
+    if [ ! -e "$R/etc/alg.conf" ]; then
+        install -m 0644 "$R/usr/share/alg-control/alg.conf" "$R/etc/alg.conf"
+    fi
+
+    if live; then
+        # Members of this group may change settings without sudo, alongside
+        # sudo and wheel (see allow_groups in /etc/alg.conf).
+        if ! getent group alg >/dev/null 2>&1; then
+            addgroup --system alg >/dev/null 2>&1 || groupadd -r alg >/dev/null 2>&1 || true
+        fi
+
+        # The EC interface has to be writable.
+        if [ -d /sys/module/ec_sys ] &&
+           [ "$(cat /sys/module/ec_sys/parameters/write_support 2>/dev/null)" != Y ]; then
+            rmmod ec_sys 2>/dev/null || true
+        fi
+        modprobe ec_sys write_support=1 2>/dev/null || true
+    fi
+
+    # The standard debhelper sequence for a unit that should be enabled.
+    if [ -z "$R" ] && [ -x /usr/bin/deb-systemd-helper ]; then
+        deb-systemd-helper unmask alg.service >/dev/null || true
+        if deb-systemd-helper --quiet was-enabled alg.service; then
+            deb-systemd-helper enable alg.service >/dev/null || true
+        else
+            deb-systemd-helper update-state alg.service >/dev/null || true
+        fi
+    fi
+
+    if live; then
+        systemctl --system daemon-reload >/dev/null 2>&1 || true
+        if [ -x /usr/bin/deb-systemd-invoke ]; then
+            deb-systemd-invoke restart alg.service >/dev/null 2>&1 || true
+        else
+            systemctl restart alg.service >/dev/null 2>&1 || true
+        fi
+
+        ok=no
+        for attempt in 1 2 3 4 5 6 7 8 9 10; do
+            if /usr/bin/alg fan status >/dev/null 2>&1; then
+                ok=yes
+                break
+            fi
+            sleep 0.5
+        done
+        if [ "$ok" = yes ]; then
+            echo "alg-control: the daemon is up."
+            /usr/bin/alg fan status || true
+        else
+            # Reported, not fatal: a package left half-configured helps nobody.
+            echo "alg-control: WARNING - the alg daemon did not come up." >&2
+            echo "alg-control: see 'journalctl -u alg' for the reason." >&2
+        fi
+
+        start_trays
+    fi
+    ;;
+esac
+
+exit 0

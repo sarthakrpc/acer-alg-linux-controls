@@ -1,0 +1,15 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=ALG Control
+GenericName=Fan and Keyboard Backlight Control
+Comment=Control fan speed and keyboard backlight on the Acer ALG
+Exec=/usr/bin/alg gui
+Icon=alg
+Terminal=false
+Categories=Settings;HardwareSettings;
+Keywords=alg;algfan;algkbd;algui;acer;fan;fans;cooling;temperature;thermal;rpm;noise;speed;keyboard;backlight;light;rgb;colour;color;nitrosense;control;
+StartupNotify=true
+# Matches the window's WM_CLASS, so the panel shows this launcher's icon for
+# the open window and can pin it.
+StartupWMClass=ALG Control

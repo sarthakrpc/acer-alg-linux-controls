@@ -1,0 +1,108 @@
+#!/bin/sh
+# Before unpacking: take over from the Python version of alg (1.x), which was
+# installed by a script under /usr/local, and remove every trace of it.
+#
+# $DPKG_ROOT is only set when dpkg is installing into an alternate root
+# without chroot (which is how this package is tested as an ordinary user).
+# File operations honour it; anything that talks to the running system is
+# skipped.
+set -e
+
+R="${DPKG_ROOT:-}"
+
+live() {
+    [ -z "$R" ] && [ -d /run/systemd/system ]
+}
+
+case "$1" in
+install|upgrade)
+    # The old layout expressed "follow the fan curve" as an enabled systemd
+    # unit. The daemon keeps that choice in /var/lib/alg/fan-mode instead, so
+    # note it before the unit that encodes it goes away.
+    curve_was_on=no
+    if live; then
+        for unit in alg-fan algfan; do
+            if systemctl is-enabled "$unit.service" >/dev/null 2>&1 ||
+               systemctl is-active "$unit.service" >/dev/null 2>&1; then
+                curve_was_on=yes
+            fi
+        done
+    fi
+
+    # Settings from the two earlier layouts.
+    if [ -f "$R/var/lib/algkbd/state.json" ] && [ ! -f "$R/var/lib/alg/kbd.json" ]; then
+        mkdir -p "$R/var/lib/alg"
+        mv "$R/var/lib/algkbd/state.json" "$R/var/lib/alg/kbd.json"
+    fi
+    if [ -f "$R/etc/algfan.conf" ] && [ ! -f "$R/etc/alg.conf" ]; then
+        mv "$R/etc/algfan.conf" "$R/etc/alg.conf"
+    fi
+    if [ "$curve_was_on" = yes ] && ! grep -qs '^curve:' "$R/var/lib/alg/fan-mode"; then
+        profile="$(sed -n 's/^[[:space:]]*profile[[:space:]]*[=:][[:space:]]*//p' "$R/etc/alg.conf" 2>/dev/null | head -n 1)"
+        mkdir -p "$R/var/lib/alg"
+        echo "curve:${profile:-balanced}" > "$R/var/lib/alg/fan-mode"
+    fi
+
+    # Stop the old units while the old program is still in place: their stop
+    # hooks call back into it to hand the fans to the firmware.
+    if live; then
+        for unit in alg-fan alg-resume alg-kbd-restore algfan algkbd-restore; do
+            systemctl disable --now "$unit.service" >/dev/null 2>&1 || true
+        done
+        # A copy of this program installed by hand from source, if there is one.
+        if grep -qs '/usr/local/bin/alg' /etc/systemd/system/alg.service; then
+            systemctl disable --now alg.service >/dev/null 2>&1 || true
+        fi
+        pkill -f '^python3 /usr/local/bin/alg' 2>/dev/null || true
+        pkill -f '^/usr/local/bin/alg tray' 2>/dev/null || true
+        pkill -f '^/usr/local/bin/alg-gui' 2>/dev/null || true
+    fi
+    for unit in alg-fan alg-resume alg-kbd-restore algfan algkbd-restore; do
+        rm -f "$R/etc/systemd/system/$unit.service"
+        # "systemctl disable" above normally takes these with it; make sure no
+        # dangling enable-links are left pointing at units that are gone.
+        rm -f "$R"/etc/systemd/system/*.wants/"$unit.service"
+    done
+    if grep -qs '/usr/local/bin/alg' "$R/etc/systemd/system/alg.service"; then
+        rm -f "$R/etc/systemd/system/alg.service"
+    fi
+
+    # The program itself. /usr/local/bin comes first in PATH, so anything left
+    # there would shadow the packaged /usr/bin/alg.
+    old="$R/usr/local/bin"
+    if grep -qs 'alg\.cli' "$old/alg" || [ -e "$old/alg-gui" ]; then
+        rm -f "$old/alg" "$old/alg-gui"
+    fi
+    for name in algfan algkbd algui; do
+        if [ -L "$old/$name" ]; then
+            case "$(readlink "$old/$name")" in
+            /usr/local/bin/alg) rm -f "$old/$name" ;;
+            esac
+        elif grep -qs 'python' "$old/$name"; then
+            rm -f "$old/$name"
+        fi
+    done
+    if grep -qs 'python' "$old/alghelper"; then
+        rm -f "$old/alghelper"
+    fi
+    rm -rf "$R/usr/local/lib/alg"
+    rm -rf "$R/usr/local/share/doc/alg" "$R/usr/local/share/doc/algfan"
+    rm -f "$R/usr/local/share/applications/algui.desktop"
+    rm -f "$R/usr/local/share/icons/hicolor/scalable/apps/algui.svg"
+
+    # Module settings now ship under /usr/lib, owned by the package.
+    rm -f "$R/etc/modules-load.d/alg.conf" "$R/etc/modprobe.d/alg.conf"
+    rm -f "$R/etc/modules-load.d/algfan.conf" "$R/etc/modprobe.d/algfan.conf"
+    rm -f "$R/etc/algfan.conf.default"
+
+    # Runtime state of the old daemons.
+    rm -rf "$R/var/lib/algkbd" "$R/run/algfan"
+    rm -f "$R/run/alg/fan-mode"
+
+    if live; then
+        systemctl daemon-reload >/dev/null 2>&1 || true
+    fi
+    ;;
+esac
+
+exit 0

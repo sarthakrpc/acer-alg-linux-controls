@@ -1,0 +1,32 @@
+#!/bin/sh
+set -e
+
+R="${DPKG_ROOT:-}"
+
+live() {
+    [ -z "$R" ] && [ -d /run/systemd/system ]
+}
+
+if live; then
+    case "$1" in
+    remove|deconfigure)
+        # Uninstalling the fan controller must leave the firmware in charge,
+        # whatever mode was chosen. Done through the daemon while it is still
+        # up; on an upgrade this is skipped so your choice carries over.
+        /usr/bin/alg fan auto >/dev/null 2>&1 || true
+        ;;
+    esac
+
+    # The desktop side would otherwise keep running the old program. After an
+    # upgrade the new postinst brings the tray icon back.
+    pkill -x alg-gui 2>/dev/null || true
+    pkill -f '^/usr/bin/alg tray' 2>/dev/null || true
+
+    if [ -x /usr/bin/deb-systemd-invoke ]; then
+        deb-systemd-invoke stop alg.service >/dev/null 2>&1 || true
+    else
+        systemctl stop alg.service >/dev/null 2>&1 || true
+    fi
+fi
+
+exit 0

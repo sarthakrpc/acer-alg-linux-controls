@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=ALG Control (tray icon)
+Comment=Live temperature in the system tray, with quick fan settings
+Exec=/usr/bin/alg tray
+Icon=alg
+Terminal=false
+X-GNOME-Autostart-enabled=true

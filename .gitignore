@@ -1,0 +1,32 @@
+# Build output: the two binaries, the simulator build, the .deb and its
+# staging tree, and the run/ and state/ directories the README's simulator
+# walkthrough creates. All of it is reproducible with `make deb`.
+/build/
+
+# A package copied somewhere else in the tree. Release files belong in a
+# release, not in history.
+*.deb
+
+# Go: test binaries, profiles and coverage, and a local multi-module workspace.
+*.test
+*.out
+*.prof
+coverage.*
+go.work
+go.work.sum
+
+# Editors and the OS.
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+.directory
+
+# Per-machine assistant settings.
+.claude/settings.local.json
+
+# Deliberately NOT ignored: recon/acpi/ and recon/ec_baseline.bin. They are
+# binary and a few MB, but they are the evidence the EC protocol was derived
+# from and cannot be regenerated once the firmware changes.
