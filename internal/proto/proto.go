@@ -22,7 +22,7 @@ import (
 	"alg/internal/paths"
 )
 
-const Version = "2.0"
+const Version = "1.1"
 
 const (
 	OpPing          = "ping"

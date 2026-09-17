@@ -44,6 +44,11 @@ put 0644 "$SRC/dist/alg-tray.desktop"  etc/xdg/autostart/alg-tray.desktop
 # The default config; the postinst copies it to /etc/alg.conf if there is none.
 put 0644 "$SRC/alg.conf"               usr/share/$PKG/alg.conf
 put 0644 "$SRC/README.md"              usr/share/doc/$PKG/README.md
+# Kept in the same relative place, so the README's links and pictures work
+# from the installed copy too.
+for doc in "$SRC"/docs/*; do
+    put 0644 "$doc"                    "usr/share/doc/$PKG/docs/$(basename "$doc")"
+done
 
 mkdir -p "$STAGE/DEBIAN"
 for script in preinst postinst prerm postrm; do
